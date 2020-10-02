@@ -1,0 +1,75 @@
+---
+title: "Practical Machine Learning Assignment"
+author: "Aristle Monteiro"
+date: "02/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+The data for this assignment has been downloaded from <http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har>. At first glance, the training dataset is huge with 19622 rows (observations) and 160 variables. However, a lot of these variables are full of null values. These variables do no contribute anything to the model, but complicate calculation of the model. Therefore, we need to delete these from both the training as well as the final test set.
+
+```{r begin, eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+print('Training dataset dimensions before null')
+dim(data)
+data <- data[, colSums(is.na(data)) == 0]
+print('Training dataset dimensions after null')
+dim(data)
+print('Test dataset dimensions before null')
+dim(final_test)
+print('Training dataset dimensions after null')
+final_test <- final_test[, colSums(is.na(final_test)) == 0]
+dim(final_test)
+```
+
+As we can see, the test dataset has 33 less variables that are not null. Before building our model, we therefore need to delete the variables from the training set that are not present in the test set. This is done by using the colnames command. When doing this (I did this using the dplyr library for better error debugging), we find that there is a column termed problem_id from the test dataset that is not present in the training dataset. This column must be deleted. After doing this, we can use colnames(final_test) to select columns from the dataset.
+
+```{r pressure, echo=TRUE, eval=FALSE}
+library(dplyr)
+data <- data %>% select(colnames(final_test))
+```
+
+The first 5 columns of the data are informational variables such as date and names. These variables are not needed and should be deleted from the dataset. Now, the dataset is ready for our model building process. 
+
+
+## Model Building
+To build the model, we need to first split the dataset into a training and cross-validation dataset. I have done this using the createDataPartition command from the caret package. I did a 80-20 split in favour of the training package, so that we had a larger part of the data on which to train the model (to make it more reliable, make it harder for overfitting as well as reduce bias). 
+
+```{r splitting, eval = FALSE, echo=TRUE}
+set.seed(420)
+part <- createDataPartition(data$classe, p = 0.8)[[1]]
+train <- data[part,]
+test <- data[-part,]
+```
+I chose to fit models using the random forrest method as well as the boosting method, since these are the most accurate for prediction. I also tried fitting a lasso regression model, since there are a huge number of variables, and it would ideally be a good idea to penalize these predictors for better accuracy. However, during the prediction quiz, I found that this method was not as accurate, and therefore, I have not included this model here. The commands are shown here:
+```{r models, eval = FALSE, echo=TRUE}
+##Random forest model
+model.rf <- train(classe~., data = train1, method = 'rf')
+##Boositin model
+model.desc <- train(classe~., data = train1, method = 'gbm')
+```
+The confusion matrices of the two models (with the test class) are shown below with the test dataset. This is the first step of our cross-validation. We can see below that the prediction from both models is very accurate, and most data points are correctly classified.
+
+```{r model_rf, eval = TRUE, echo = TRUE}
+print("Random Forest model")
+plot(model.rf$finalModel)
+predictions.rf <- predict(model.rf, test)
+confusionMatrix(predictions.rf, test$classe)
+print("Boosting model")
+predictions.desc <- predict(model.desc, test)
+confusionMatrix(predictions.desc, test$classe)
+```
+## Final prediction
+I will now use both models to predict the classes for the final test set. Then, I will compare them with each other to see if the agree perfectly. This is the second step of cross-validation, and is the final step in the prediction exercise. If they are not in perfect agreement, I shall choose the model with the higher accuracy as my answer. However, the two are in perfect agreement.
+```{r finalprediction, eval = TRUE, echo = FALSE}
+print("Boosting prediction")
+prediction_final.desc
+print("Random forest prediction")
+prediction_final.rf
+
+print("Confusion Matrix table")
+x$table
+```
